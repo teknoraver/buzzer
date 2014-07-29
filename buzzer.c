@@ -2,6 +2,7 @@
  * Buzzer driver
  *
  * Copyright (C) 2014 Matteo Croce
+ * based on linux/drivers/input/misc/pcspkr.c
  * 
  * usage: echo milliseconds frequency >/sys/devices/platform/pcspkr/buzzer
  * if frequency is omitted default is 1000 Hz
@@ -20,11 +21,13 @@
 #include <linux/timex.h>
 #include <linux/module.h>
 #include <linux/sysfs.h>
+#include <linux/i8253.h>
 #include <linux/platform_device.h>
 
-void buzz(int ms, int hz)
+void buzz(unsigned ms, unsigned hz)
 {
-	int count = 0;
+	unsigned count = 0;
+	unsigned long flags;
 
 	if (hz < 20 || hz > 20000) {
 		outb(inb_p(0x61) & 0xFC, 0x61);
@@ -32,6 +35,8 @@ void buzz(int ms, int hz)
 	}
 
 	count = PIT_TICK_RATE / hz;
+
+	raw_spin_lock_irqsave(&i8253_lock, flags);
 
 	/* set buzzer */
 	outb_p(0xB6, 0x43);
@@ -46,12 +51,14 @@ void buzz(int ms, int hz)
 
 	/* stop beep */
 	outb(inb_p(0x61) & 0xFC, 0x61);
+
+	raw_spin_unlock_irqrestore(&i8253_lock, flags);
 }
 
 static ssize_t sysfsbuzz(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	int ms;
-	int hz = 1000;
+	unsigned ms;
+	unsigned hz = 1000;
 
 	sscanf(buf, "%u %u", &ms, &hz);
 
