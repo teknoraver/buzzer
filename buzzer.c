@@ -21,12 +21,7 @@ static ssize_t buzz(struct device *dev, struct device_attribute *attr, const cha
 	int hz = 1000;
 	int c;
 
-	if(strchr(buf, ' '))
-		sscanf(buf, "%u %u", &ms, &hz);
-	else {
-		//kstrtoul(buf, 0, ms);
-		sscanf(buf, "%u", &ms);
-	}
+	sscanf(buf, "%u %u", &ms, &hz);
 	c = PIT_TICK_RATE / hz;
 
 	/* set buzzer */
@@ -43,7 +38,7 @@ static ssize_t buzz(struct device *dev, struct device_attribute *attr, const cha
 	/* stop beep */
 	outb(inb_p(0x61) & 0xFC, 0x61);
 
-	printk("buzz: %dms %dhz\n", ms, hz);
+	printk(KERN_DEBUG "buzzer: %dms %dhz\n", ms, hz);
 
 	return count;
 }
