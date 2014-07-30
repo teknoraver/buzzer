@@ -24,33 +24,49 @@
 #include <linux/i8253.h>
 #include <linux/platform_device.h>
 
+#define CONTROL_WORD_REG	0x43
+#define COUNTER2		0x42
+#define SPEAKER_PORT		0x61
+
 void buzz(unsigned ms, unsigned hz)
 {
-	unsigned count = 0;
 	unsigned long flags;
-
-	if (hz < 20 || hz > 20000) {
-		outb(inb_p(0x61) & 0xFC, 0x61);
-		return;
-	}
-
-	count = PIT_TICK_RATE / hz;
+	u8 p61;
 
 	raw_spin_lock_irqsave(&i8253_lock, flags);
 
-	/* set buzzer */
-	outb_p(0xB6, 0x43);
-	/* select desired HZ */
-	outb_p(count & 0xff, 0x42);
-	outb((count >> 8) & 0xff, 0x42);
+	if (hz >= 20 || hz <= 20000) {
+		unsigned count = PIT_TICK_RATE / hz;
 
-	/* start beep */
-	outb_p(inb_p(0x61) | 3, 0x61);
+		/* set buzzer
+		* 0xB6
+		* 1 0		Counter 2
+		* 1 1		2xRead/2xWrite bits 0..7 then 8..15 of counter value
+		* 0 1 1	Mode 3: Square Wave
+		* 0		Counter is a 16 bit binary counter (0..65535)
+		*/
+		outb_p(0xB6, CONTROL_WORD_REG);
 
-	msleep(ms);
+		/* select desired HZ with two writes in counter 2, port 42h */
+		outb_p(count & 0xff, COUNTER2);
+		outb_p((count >> 8) & 0xff, COUNTER2);
 
-	/* stop beep */
-	outb(inb_p(0x61) & 0xFC, 0x61);
+		/* start beep
+		* set bit 0-1 (0: SPEAKER DATA; 1: OUT2) of GATE2 (port 61h)
+		*/
+		p61 = inb_p(SPEAKER_PORT);
+		if((p61 & 3) != 3)
+			outb_p(p61 | 3, SPEAKER_PORT);
+
+		msleep(ms);
+	}
+
+	/* stop beep
+	 * clear bit 0-1 of port 61h
+	 */
+	p61 = inb_p(SPEAKER_PORT);
+	if(p61 & 3)
+		outb(p61 & 0xFC, SPEAKER_PORT);
 
 	raw_spin_unlock_irqrestore(&i8253_lock, flags);
 }
