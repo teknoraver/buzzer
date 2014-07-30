@@ -57,9 +57,9 @@ void buzz(unsigned ms, unsigned hz)
 		p61 = inb_p(SPEAKER_PORT);
 		if((p61 & 3) != 3)
 			outb_p(p61 | 3, SPEAKER_PORT);
-
-		msleep(ms);
 	}
+
+	msleep(ms);
 
 	/* stop beep
 	 * clear bit 0-1 of port 61h
@@ -78,7 +78,8 @@ static ssize_t sysfsbuzz(struct device *dev, struct device_attribute *attr, cons
 
 	sscanf(buf, "%u %u", &ms, &hz);
 
-	buzz(ms, hz);
+	if(ms <= 2000)
+		buzz(ms, hz);
 
 	return count;
 }
