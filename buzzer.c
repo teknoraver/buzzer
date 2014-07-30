@@ -35,7 +35,7 @@ void buzz(unsigned ms, unsigned hz)
 
 	raw_spin_lock_irqsave(&i8253_lock, flags);
 
-	if (hz >= 20 || hz <= 20000) {
+	if (hz >= 20 && hz <= 20000) {
 		unsigned count = PIT_TICK_RATE / hz;
 
 		/* set buzzer
