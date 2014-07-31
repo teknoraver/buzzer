@@ -43,6 +43,6 @@ else
 	done
 fi
 
-echo "$((time * 125)) $freq"
+echo "$((time * 100)) $freq"
 
 done
