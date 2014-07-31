@@ -10,21 +10,23 @@ case $note in
 				;;
 esac
 
+note=${note/\#/d}
+
 ottava=$((ottava-3))
 
 case $note in
-'La'	|'A'		) freq=440;;
-'La#'	|'A#'	|'Bb'	) freq=466;;
-'Si'	|'B'		) freq=494;;
-'Do'	|'C'		) freq=523;;
-'Do#'	|'C#'	|'Db'	) freq=554;;
-'Re'	|'D'		) freq=587;;
-'Re#'	|'D#'	|'Eb'	) freq=622;;
-'Mi'	|'E'		) freq=659;;
-'Fa'	|'F'		) freq=698;;
-'Fa#'	|'F#'	|'Gb'	) freq=740;;
-'Sol'	|'G'		) freq=784;;
-'Sol#'	|'G#'	|'Ab'	) freq=831;;
+La	|A		) freq=440;;
+Lad	|Ad	|Bb	) freq=466;;
+Si	|B		) freq=494;;
+Do	|C		) freq=523;;
+Dod	|Cd	|Db	) freq=554;;
+Re	|D		) freq=587;;
+Red	|Dd	|Eb	) freq=622;;
+Mi	|E		) freq=659;;
+Fa	|F		) freq=698;;
+Fad	|Fd	|Gb	) freq=740;;
+Sol	|G		) freq=784;;
+Sol	|Gd	|Ab	) freq=831;;
 P			) freq=0;;
 esac
 
@@ -44,5 +46,3 @@ fi
 echo "$((time * 125)) $freq"
 
 done
-
-
