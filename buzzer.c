@@ -84,7 +84,7 @@ static ssize_t sysfsbuzz(struct device *dev, struct device_attribute *attr, cons
 	return count;
 }
 
-static DEVICE_ATTR(buzzer, 0222, NULL, sysfsbuzz);
+static DEVICE_ATTR(buzzer, 0200, NULL, sysfsbuzz);
 
 static int buzzer_probe(struct platform_device *dev)
 {
