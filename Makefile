@@ -1,7 +1,15 @@
+ifneq ($(KERNELRELEASE),)
+
 obj-m += buzzer.o
 
-all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+else
 
-clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+KDIR ?= /lib/modules/$(shell uname -r)/build
+
+modules:
+	$(MAKE) -C $(KDIR) M=$(CURDIR) $@
+
+%:
+	$(MAKE) -C $(KDIR) M=$(CURDIR) $@
+
+endif
