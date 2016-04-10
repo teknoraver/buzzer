@@ -26,7 +26,7 @@ Mi	|E		) freq=659;;
 Fa	|F		) freq=698;;
 Fad	|Fd	|Gb	) freq=740;;
 Sol	|G		) freq=784;;
-Sol	|Gd	|Ab	) freq=831;;
+Sold	|Gd	|Ab	) freq=831;;
 P			) freq=0;;
 esac
 
