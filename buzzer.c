@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 
+	/* stop the buzzer if exiting / crashing */
 	atexit(reset);
 	signal(SIGINT, (__sighandler_t)reset);
 	signal(SIGQUIT, (__sighandler_t)reset);
