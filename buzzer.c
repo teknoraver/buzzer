@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, (__sighandler_t)reset);
 
 	while (getline(&line, &n, stdin) > 0) {
-		int octave;
+		int octave = 0;
 		int dur;
 		int note;
 		char *ptr = strchr(line, '\n');
@@ -170,10 +170,12 @@ int main(int argc, char *argv[])
 
 		/* get the octave */
 		*ptr-- = 0;
-		octave = *ptr - '0';
+		if (*line != 'P') {
+			octave = *ptr - '0';
 
-		/* strip the octave from the note */
-		*ptr-- = 0;
+			/* strip the octave from the note */
+			*ptr-- = 0;
+		}
 
 		note = note2freq(line, octave);
 
