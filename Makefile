@@ -1,15 +1,7 @@
-ifneq ($(KERNELRELEASE),)
+CFLAGS := -Wall -Wextra -O2
 
-obj-m += buzzer.o
+buzzer: buzzer.c
+	$(CC) $(CFLAGS) -o $@ $^
 
-else
-
-KDIR ?= /lib/modules/$(shell uname -r)/build
-
-modules:
-	$(MAKE) -C $(KDIR) M=$(CURDIR) $@
-
-%:
-	$(MAKE) -C $(KDIR) M=$(CURDIR) $@
-
-endif
+clean:
+	$(RM) buzzer

@@ -1,42 +1,35 @@
-/*
- * Buzzer driver
- *
- * Copyright (C) 2014 Matteo Croce
- * based on linux/drivers/input/misc/pcspkr.c
- * 
- * usage: echo milliseconds frequency >/sys/devices/platform/pcspkr/buzzer
- * if frequency is omitted default is 1000 Hz
- * 
- * eg:
- * echo 100 440 >/sys/devices/platform/pcspkr/buzzer
- * echo 100 >/sys/devices/platform/pcspkr/buzzer
- */
 
-/*
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published by
- * the Free Software Foundation.
- */
-#include <linux/delay.h>
-#include <linux/timex.h>
-#include <linux/module.h>
-#include <linux/sysfs.h>
-#include <linux/i8253.h>
-#include <linux/platform_device.h>
+
+#include <stdint.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
+
+/* from linux/include/linux/timex.h */
+#define PIT_TICK_RATE		1193182ul
 
 #define CONTROL_WORD_REG	0x43
 #define COUNTER2		0x42
 #define SPEAKER_PORT		0x61
 
-void buzz(unsigned ms, unsigned hz)
+union freq {
+	uint16_t freq;
+	struct {
+		uint8_t lob;
+		uint8_t hib;
+	};
+};
+
+static int port = -1;
+
+static void play(int f, int dur)
 {
-	unsigned long flags;
-	u8 p61;
-
-	raw_spin_lock_irqsave(&i8253_lock, flags);
-
-	if (hz >= 20 && hz <= 20000) {
-		unsigned count = PIT_TICK_RATE / hz;
+	uint8_t p61;
+	if (f && f > 19 && f < 20000) {
+		union freq freq = { .freq = PIT_TICK_RATE / f };
 
 		/* set buzzer
 		* 0xB6
@@ -45,83 +38,126 @@ void buzz(unsigned ms, unsigned hz)
 		* 0 1 1	Mode 3: Square Wave
 		* 0		Counter is a 16 bit binary counter (0..65535)
 		*/
-		outb_p(0xB6, CONTROL_WORD_REG);
+		if (!pwrite(port, "\xB6", 1, CONTROL_WORD_REG))
+			return;
 
 		/* select desired HZ with two writes in counter 2, port 42h */
-		outb_p(count & 0xff, COUNTER2);
-		outb_p((count >> 8) & 0xff, COUNTER2);
+		if (!pwrite(port, &freq.lob, 1, COUNTER2))
+			return;
+		if (!pwrite(port, &freq.hib, 1, COUNTER2))
+			return;
 
 		/* start beep
 		* set bit 0-1 (0: SPEAKER DATA; 1: OUT2) of GATE2 (port 61h)
 		*/
-		p61 = inb_p(SPEAKER_PORT);
-		if((p61 & 3) != 3)
-			outb_p(p61 | 3, SPEAKER_PORT);
+		if (!pread(port, &p61, 1, SPEAKER_PORT))
+			return;
+		if ((p61 & 3) != 3) {
+			p61 |= 3;
+			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
+			return;
+		}
+
+	} else {
+		/* stop beep
+		* clear bit 0-1 of port 61h
+		*/
+		if (!pread(port, &p61, 1, SPEAKER_PORT))
+			return;
+		if (p61 & 3) {
+			p61 &= 0xFC;
+			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
+			return;
+		}
+	}
+	usleep(dur * 1000);
+}
+
+static int note2freq(const char *note, int octave)
+{
+	int freq = 0;
+
+	if (!strcmp(note, "La") || !strcmp(note, "A")) {
+		freq = 440;
+	} else if (!strcmp(note, "La#") || !strcmp(note, "A#") || !strcmp(note, "Bb")) {
+		freq = 466;
+	} else if (!strcmp(note, "Si") || !strcmp(note, "B")) {
+		freq = 494;
+	} else if (!strcmp(note, "Do") || !strcmp(note, "C")) {
+		freq = 523;
+	} else if (!strcmp(note, "Do#") || !strcmp(note, "C#") || !strcmp(note, "Bb")) {
+		freq = 554;
+	} else if (!strcmp(note, "Re") || !strcmp(note, "D")) {
+		freq = 587;
+	} else if (!strcmp(note, "Re#") || !strcmp(note, "D#") || !strcmp(note, "Eb")) {
+		freq = 622;
+	} else if (!strcmp(note, "Mi") || !strcmp(note, "E")) {
+		freq = 659;
+	} else if (!strcmp(note, "Fa") || !strcmp(note, "F")) {
+		freq = 698;
+	} else if (!strcmp(note, "Fa#") || !strcmp(note, "F#") || !strcmp(note, "Gb")) {
+		freq = 740;
+	} else if (!strcmp(note, "Sol") || !strcmp(note, "G")) {
+		freq = 784;
+	} else if (!strcmp(note, "Sol#") || !strcmp(note, "G#") || !strcmp(note, "Ab")) {
+		freq = 831;
 	}
 
-	msleep(ms);
-
-	/* stop beep
-	 * clear bit 0-1 of port 61h
-	 */
-	p61 = inb_p(SPEAKER_PORT);
-	if(p61 & 3)
-		outb(p61 & 0xFC, SPEAKER_PORT);
-
-	raw_spin_unlock_irqrestore(&i8253_lock, flags);
+	return freq << (octave - 3);
 }
 
-static ssize_t sysfsbuzz(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static void reset(void)
 {
-	unsigned ms;
-	unsigned hz = 1000;
-
-	sscanf(buf, "%u %u", &ms, &hz);
-
-	if(ms <= 2000)
-		buzz(ms, hz);
-
-	return count;
+	play(0, 0);
+	exit(0);
 }
 
-static DEVICE_ATTR(buzzer, 0200, NULL, sysfsbuzz);
-
-static int buzzer_probe(struct platform_device *dev)
+int main(int argc, char *argv[])
 {
-	int err = device_create_file(&dev->dev, &dev_attr_buzzer);
+	char *line = NULL;
+	size_t n = 0;
 
-	if (err < 0)
-		return err;
+	port = open("/dev/port", O_RDWR);
+	if (port == -1) {
+		perror("open");
+		exit(1);
+	}
 
-	printk(KERN_INFO "buzzer: driver loaded\n");
+	(void)argc;
+	(void)argv;
+	atexit(reset);
+	signal(SIGINT, (__sighandler_t)reset);
+	signal(SIGQUIT, (__sighandler_t)reset);
+
+	while (getline(&line, &n, stdin) > 0) {
+		int ottava;
+		int dur;
+		int nota;
+		char *ptr = strchr(line, '\n');
+
+		/* truncate the string */
+		*ptr = 0;
+
+		/* get the duration */
+		ptr = strchr(line, '\t');
+		dur = atoi(ptr + 1) * 100;
+
+		/* get the octave */
+		*ptr-- = 0;
+		ottava = *ptr - '0';
+
+		/* strip the octave from the note */
+		*ptr-- = 0;
+
+		nota = note2freq(line, ottava);
+
+		printf("nota: %d, ottava: %d, dur: %d\n", nota, ottava, dur);
+		play(nota, dur);
+
+		free(line);
+		line = NULL;
+		n = 0;
+	}
 
 	return 0;
 }
-
-static int buzzer_remove(struct platform_device *dev)
-{
-	device_remove_file(&dev->dev, &dev_attr_buzzer);
-	buzz(0, 0);
-	printk(KERN_INFO "buzzer: driver unloaded\n");
-
-	return 0;
-}
-
-static void buzzer_shutdown(struct platform_device *dev)
-{
-	buzz(0, 0);
-}
-
-static struct platform_driver buzzer_platform_driver = {
-	.driver		= {
-		.name	= "pcspkr",
-		.owner	= THIS_MODULE,
-	},
-	.probe		= buzzer_probe,
-	.remove		= buzzer_remove,
-	.shutdown	= buzzer_shutdown,
-};
-module_platform_driver(buzzer_platform_driver);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Matteo Croce");
