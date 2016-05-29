@@ -77,6 +77,9 @@ static int note2freq(const char *note, int octave)
 {
 	int freq = 0;
 
+	/* it just sounds good */
+	octave -= 3;
+
 	if (!strcmp(note, "La") || !strcmp(note, "A")) {
 		freq = 440;
 	} else if (!strcmp(note, "La#") || !strcmp(note, "A#") || !strcmp(note, "Bb")) {
@@ -101,9 +104,15 @@ static int note2freq(const char *note, int octave)
 		freq = 784;
 	} else if (!strcmp(note, "Sol#") || !strcmp(note, "G#") || !strcmp(note, "Ab")) {
 		freq = 831;
-	}
+	} else
+		return 0;
 
-	return freq << (octave - 3);
+	if (octave > 0)
+		freq <<= octave;
+	if (octave < 0)
+		freq >>= -octave;
+
+	return freq;
 }
 
 static void reset(void)
@@ -128,12 +137,18 @@ int main(int argc, char *argv[])
 	atexit(reset);
 	signal(SIGINT, (__sighandler_t)reset);
 	signal(SIGQUIT, (__sighandler_t)reset);
+	signal(SIGSEGV, (__sighandler_t)reset);
+	signal(SIGTERM, (__sighandler_t)reset);
 
 	while (getline(&line, &n, stdin) > 0) {
-		int ottava;
+		int octave;
 		int dur;
-		int nota;
+		int note;
 		char *ptr = strchr(line, '\n');
+
+		/* skip empty lines or comments */
+		if (ptr == line || *line == '#')
+			continue;
 
 		/* truncate the string */
 		*ptr = 0;
@@ -144,15 +159,15 @@ int main(int argc, char *argv[])
 
 		/* get the octave */
 		*ptr-- = 0;
-		ottava = *ptr - '0';
+		octave = *ptr - '0';
 
 		/* strip the octave from the note */
 		*ptr-- = 0;
 
-		nota = note2freq(line, ottava);
+		note = note2freq(line, octave);
 
-		printf("nota: %d, ottava: %d, dur: %d\n", nota, ottava, dur);
-		play(nota, dur);
+		/* printf("note: %d(%s), octave: %d, dur: %d\n", note, line, octave, dur);*/
+		play(note, dur);
 
 		free(line);
 		line = NULL;
