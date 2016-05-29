@@ -123,8 +123,10 @@ static void reset(void)
 
 int main(int argc, char *argv[])
 {
+	int verbose = 0;
 	char *line = NULL;
 	size_t n = 0;
+	char c;
 
 	port = open("/dev/port", O_RDWR);
 	if (port == -1) {
@@ -132,8 +134,17 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	(void)argc;
-	(void)argv;
+	while ((c = getopt(argc, argv, "vh")) != -1)
+		switch(c) {
+		case 'v':
+			verbose = 1;
+			break;
+		case 'h':
+			fprintf(stderr, "usage: %s [-v] <notes_file\n", *argv);
+		default:
+			return 0;
+		}
+
 	atexit(reset);
 	signal(SIGINT, (__sighandler_t)reset);
 	signal(SIGQUIT, (__sighandler_t)reset);
@@ -166,7 +177,8 @@ int main(int argc, char *argv[])
 
 		note = note2freq(line, octave);
 
-		/* printf("note: %d(%s), octave: %d, dur: %d\n", note, line, octave, dur);*/
+		if (verbose)
+			printf("note: %3s, octave: %d, dur: %3d, freq: %4d\n", line, octave, dur, note);
 		play(note, dur);
 
 		free(line);
