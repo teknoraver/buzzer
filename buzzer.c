@@ -167,18 +167,24 @@ int main(int argc, char *argv[])
 
 		/* get the duration */
 		ptr = strchr(line, '\t');
-		dur = atoi(ptr + 1) * 100;
-
-		/* get the octave */
+		dur = atoi(ptr + 1);
 		*ptr-- = 0;
-		if (*line != 'P') {
-			octave = *ptr - '0';
 
-			/* strip the octave from the note */
-			*ptr-- = 0;
+		/* if line starts with @ it's a frequency */
+		if (*line == '@') {
+			note = atoi(line + 1);
+		} else {
+			dur *= 100;
+			/* get the octave */
+			if (*line != 'P') {
+				octave = *ptr - '0';
+
+				/* strip the octave from the note */
+				*ptr-- = 0;
+			}
+
+			note = note2freq(line, octave);
 		}
-
-		note = note2freq(line, octave);
 
 		if (verbose)
 			printf("note: %3s, octave: %d, dur: %3d, freq: %4d\n", line, octave, dur, note);
