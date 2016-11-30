@@ -1,5 +1,4 @@
 
-
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -29,15 +28,15 @@ static void play(int f, int dur)
 {
 	uint8_t p61;
 	if (f && f > 19 && f < 20000) {
-		union freq freq = { .freq = PIT_TICK_RATE / f };
+		union freq freq = {.freq = PIT_TICK_RATE / f };
 
 		/* set buzzer
-		* 0xB6
-		* 1 0		Counter 2
-		* 1 1		2xRead/2xWrite bits 0..7 then 8..15 of counter value
-		* 0 1 1	Mode 3: Square Wave
-		* 0		Counter is a 16 bit binary counter (0..65535)
-		*/
+		 * 0xB6
+		 * 1 0          Counter 2
+		 * 1 1          2xRead/2xWrite bits 0..7 then 8..15 of counter value
+		 * 0 1 1        Mode 3: Square Wave
+		 * 0            Counter is a 16 bit binary counter (0..65535)
+		 */
 		if (!pwrite(port, "\xB6", 1, CONTROL_WORD_REG))
 			return;
 
@@ -48,26 +47,26 @@ static void play(int f, int dur)
 			return;
 
 		/* start beep
-		* set bit 0-1 (0: SPEAKER DATA; 1: OUT2) of GATE2 (port 61h)
-		*/
+		 * set bit 0-1 (0: SPEAKER DATA; 1: OUT2) of GATE2 (port 61h)
+		 */
 		if (!pread(port, &p61, 1, SPEAKER_PORT))
 			return;
 		if ((p61 & 3) != 3) {
 			p61 |= 3;
 			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
-			return;
+				return;
 		}
 
 	} else {
 		/* stop beep
-		* clear bit 0-1 of port 61h
-		*/
+		 * clear bit 0-1 of port 61h
+		 */
 		if (!pread(port, &p61, 1, SPEAKER_PORT))
 			return;
 		if (p61 & 3) {
 			p61 &= 0xFC;
 			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
-			return;
+				return;
 		}
 	}
 	usleep(dur * 1000);
@@ -82,27 +81,32 @@ static int note2freq(const char *note, int octave)
 
 	if (!strcmp(note, "La") || !strcmp(note, "A")) {
 		freq = 440;
-	} else if (!strcmp(note, "La#") || !strcmp(note, "A#") || !strcmp(note, "Bb")) {
+	} else if (!strcmp(note, "La#") || !strcmp(note, "A#")
+		   || !strcmp(note, "Bb")) {
 		freq = 466;
 	} else if (!strcmp(note, "Si") || !strcmp(note, "B")) {
 		freq = 494;
 	} else if (!strcmp(note, "Do") || !strcmp(note, "C")) {
 		freq = 523;
-	} else if (!strcmp(note, "Do#") || !strcmp(note, "C#") || !strcmp(note, "Bb")) {
+	} else if (!strcmp(note, "Do#") || !strcmp(note, "C#")
+		   || !strcmp(note, "Bb")) {
 		freq = 554;
 	} else if (!strcmp(note, "Re") || !strcmp(note, "D")) {
 		freq = 587;
-	} else if (!strcmp(note, "Re#") || !strcmp(note, "D#") || !strcmp(note, "Eb")) {
+	} else if (!strcmp(note, "Re#") || !strcmp(note, "D#")
+		   || !strcmp(note, "Eb")) {
 		freq = 622;
 	} else if (!strcmp(note, "Mi") || !strcmp(note, "E")) {
 		freq = 659;
 	} else if (!strcmp(note, "Fa") || !strcmp(note, "F")) {
 		freq = 698;
-	} else if (!strcmp(note, "Fa#") || !strcmp(note, "F#") || !strcmp(note, "Gb")) {
+	} else if (!strcmp(note, "Fa#") || !strcmp(note, "F#")
+		   || !strcmp(note, "Gb")) {
 		freq = 740;
 	} else if (!strcmp(note, "Sol") || !strcmp(note, "G")) {
 		freq = 784;
-	} else if (!strcmp(note, "Sol#") || !strcmp(note, "G#") || !strcmp(note, "Ab")) {
+	} else if (!strcmp(note, "Sol#") || !strcmp(note, "G#")
+		   || !strcmp(note, "Ab")) {
 		freq = 831;
 	} else
 		return 0;
@@ -135,7 +139,7 @@ int main(int argc, char *argv[])
 	}
 
 	while ((c = getopt(argc, argv, "vh")) != -1)
-		switch(c) {
+		switch (c) {
 		case 'v':
 			verbose = 1;
 			break;
@@ -147,10 +151,10 @@ int main(int argc, char *argv[])
 
 	/* stop the buzzer if exiting / crashing */
 	atexit(reset);
-	signal(SIGINT, (__sighandler_t)reset);
-	signal(SIGQUIT, (__sighandler_t)reset);
-	signal(SIGSEGV, (__sighandler_t)reset);
-	signal(SIGTERM, (__sighandler_t)reset);
+	signal(SIGINT, (__sighandler_t) reset);
+	signal(SIGQUIT, (__sighandler_t) reset);
+	signal(SIGSEGV, (__sighandler_t) reset);
+	signal(SIGTERM, (__sighandler_t) reset);
 
 	while (getline(&line, &n, stdin) > 0) {
 		int octave = 0;
@@ -187,7 +191,8 @@ int main(int argc, char *argv[])
 		}
 
 		if (verbose)
-			printf("note: %3s, octave: %d, dur: %3d, freq: %4d\n", line, octave, dur, note);
+			printf("note: %3s, octave: %d, dur: %3d, freq: %4d\n",
+			       line, octave, dur, note);
 		play(note, dur);
 
 		free(line);
