@@ -58,12 +58,15 @@ static void buzz(unsigned ms, unsigned hz)
 		if((p61 & 3) != 3)
 			outb_p(p61 | 3, SPEAKER_PORT);
 	}
+	raw_spin_unlock_irqrestore(&i8253_lock, flags);
 
 	msleep(ms);
 
 	/* stop beep
 	 * clear bit 0-1 of port 61h
 	 */
+	raw_spin_lock_irqsave(&i8253_lock, flags);
+
 	p61 = inb_p(SPEAKER_PORT);
 	if(p61 & 3)
 		outb(p61 & 0xFC, SPEAKER_PORT);
