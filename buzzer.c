@@ -89,7 +89,7 @@ static int note2freq(const char *note, int octave)
 	} else if (!strcmp(note, "Do") || !strcmp(note, "C")) {
 		freq = 523;
 	} else if (!strcmp(note, "Do#") || !strcmp(note, "C#")
-		   || !strcmp(note, "Bb")) {
+		   || !strcmp(note, "Db")) {
 		freq = 554;
 	} else if (!strcmp(note, "Re") || !strcmp(note, "D")) {
 		freq = 587;
