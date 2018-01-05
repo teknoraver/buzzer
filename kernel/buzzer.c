@@ -55,7 +55,7 @@ static void buzz(unsigned ms, unsigned hz)
 		* set bit 0-1 (0: SPEAKER DATA; 1: OUT2) of GATE2 (port 61h)
 		*/
 		p61 = inb_p(SPEAKER_PORT);
-		if((p61 & 3) != 3)
+		if ((p61 & 3) != 3)
 			outb_p(p61 | 3, SPEAKER_PORT);
 	}
 	raw_spin_unlock_irqrestore(&i8253_lock, flags);
@@ -68,7 +68,7 @@ static void buzz(unsigned ms, unsigned hz)
 	raw_spin_lock_irqsave(&i8253_lock, flags);
 
 	p61 = inb_p(SPEAKER_PORT);
-	if(p61 & 3)
+	if (p61 & 3)
 		outb(p61 & 0xFC, SPEAKER_PORT);
 
 	raw_spin_unlock_irqrestore(&i8253_lock, flags);
@@ -81,7 +81,7 @@ static ssize_t sysfsbuzz(struct device *dev, struct device_attribute *attr, cons
 
 	sscanf(buf, "%u %u", &ms, &hz);
 
-	if(ms <= 2000)
+	if (ms <= 2000)
 		buzz(ms, hz);
 
 	return count;
