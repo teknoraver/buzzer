@@ -28,7 +28,7 @@
 #define COUNTER2		0x42
 #define SPEAKER_PORT		0x61
 
-void buzz(unsigned ms, unsigned hz)
+static void buzz(unsigned ms, unsigned hz)
 {
 	unsigned long flags;
 	u8 p61;
