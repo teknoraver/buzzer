@@ -1,7 +1,7 @@
 CFLAGS := -Wall -Wextra -O2
+LDFLAGS := -lm
 
-buzzer: buzzer.c
-	$(CC) $(CFLAGS) -o $@ $^
+all: buzzer
 
 clean:
 	$(RM) buzzer

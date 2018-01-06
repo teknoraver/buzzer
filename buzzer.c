@@ -1,4 +1,3 @@
-
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -6,6 +5,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <math.h>
 
 /* from linux/include/linux/timex.h */
 #define PIT_TICK_RATE		1193182ul
@@ -24,7 +24,7 @@ union freq {
 
 static int port = -1;
 
-static void play(int f, int dur)
+static void play(float f, int dur)
 {
 	uint8_t p61;
 	if (f && f > 19 && f < 20000) {
@@ -72,49 +72,48 @@ static void play(int f, int dur)
 	usleep(dur * 1000);
 }
 
-static int note2freq(const char *note, int octave)
+static float note2freq(const char *note, int octave)
 {
-	int freq = 0;
+	int notenum = 0;
+	float freq = 440.0;
 
 	/* it just sounds good */
 	octave -= 3;
 
 	if (!strcmp(note, "La") || !strcmp(note, "A")) {
-		freq = 440;
+		notenum = 0;
 	} else if (!strcmp(note, "La#") || !strcmp(note, "A#")
 		   || !strcmp(note, "Bb")) {
-		freq = 466;
+		notenum = 1;
 	} else if (!strcmp(note, "Si") || !strcmp(note, "B")) {
-		freq = 494;
+		notenum = 2;
 	} else if (!strcmp(note, "Do") || !strcmp(note, "C")) {
-		freq = 523;
+		notenum = 3;
 	} else if (!strcmp(note, "Do#") || !strcmp(note, "C#")
 		   || !strcmp(note, "Db")) {
-		freq = 554;
+		notenum = 4;
 	} else if (!strcmp(note, "Re") || !strcmp(note, "D")) {
-		freq = 587;
+		notenum = 5;
 	} else if (!strcmp(note, "Re#") || !strcmp(note, "D#")
 		   || !strcmp(note, "Eb")) {
-		freq = 622;
+		notenum = 6;
 	} else if (!strcmp(note, "Mi") || !strcmp(note, "E")) {
-		freq = 659;
+		notenum = 7;
 	} else if (!strcmp(note, "Fa") || !strcmp(note, "F")) {
-		freq = 698;
+		notenum = 8;
 	} else if (!strcmp(note, "Fa#") || !strcmp(note, "F#")
 		   || !strcmp(note, "Gb")) {
-		freq = 740;
+		notenum = 9;
 	} else if (!strcmp(note, "Sol") || !strcmp(note, "G")) {
-		freq = 784;
+		notenum = 10;
 	} else if (!strcmp(note, "Sol#") || !strcmp(note, "G#")
 		   || !strcmp(note, "Ab")) {
-		freq = 831;
+		notenum = 11;
 	} else
 		return 0;
 
-	if (octave > 0)
-		freq <<= octave;
-	if (octave < 0)
-		freq >>= -octave;
+	freq *= powf(2, octave);
+	freq *= powf(2, notenum / 12.0);
 
 	return freq;
 }
@@ -145,6 +144,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'h':
 			fprintf(stderr, "usage: %s [-v] <notes_file\n", *argv);
+			/* fall through */
 		default:
 			return 0;
 		}
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	while (getline(&line, &n, stdin) > 0) {
 		int octave = 0;
 		int dur;
-		int note;
+		float freq;
 		char *ptr = strchr(line, '\n');
 
 		/* skip empty lines or comments */
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 
 		/* if line starts with @ it's a frequency */
 		if (*line == '@') {
-			note = atoi(line + 1);
+			freq = atoi(line + 1);
 		} else {
 			dur *= 100;
 			/* get the octave */
@@ -187,13 +187,13 @@ int main(int argc, char *argv[])
 				*ptr-- = 0;
 			}
 
-			note = note2freq(line, octave);
+			freq = note2freq(line, octave);
 		}
 
 		if (verbose)
-			printf("note: %3s, octave: %d, dur: %3d, freq: %4d\n",
-			       line, octave, dur, note);
-		play(note, dur);
+			printf("note: %3s, octave: %d, dur: %3d, freq: %4.1f\n",
+			       line, octave, dur, freq);
+		play(freq, dur);
 
 		free(line);
 		line = NULL;
