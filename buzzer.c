@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (verbose)
-			printf("note: %3s, octave: %d, dur: %3d, freq: %4.1f\n",
+			printf("note: %3s, octave: %d, dur: %3d, freq: %4.2f\n",
 			       line, octave, dur, freq);
 		play(freq, dur);
 
