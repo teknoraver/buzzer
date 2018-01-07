@@ -72,6 +72,8 @@ static void play(float f, int dur)
 	usleep(dur * 1000);
 }
 
+#define STARTS(s1, s2) !strncmp(s1, s2, sizeof(s2) - 1)
+
 static float note2freq(const char *note, int octave)
 {
 	int notenum = 0;
@@ -80,40 +82,36 @@ static float note2freq(const char *note, int octave)
 	/* it just sounds good */
 	octave -= 3;
 
-	if (!strcmp(note, "La") || !strcmp(note, "A")) {
-		notenum = 0;
-	} else if (!strcmp(note, "La#") || !strcmp(note, "A#")
-		   || !strcmp(note, "Bb")) {
-		notenum = 1;
-	} else if (!strcmp(note, "Si") || !strcmp(note, "B")) {
+	/* parse the note */
+	if (STARTS(note, "Si") || STARTS(note, "B"))
 		notenum = 2;
-	} else if (!strcmp(note, "Do") || !strcmp(note, "C")) {
+	else if (STARTS(note, "Do") || STARTS(note, "C"))
 		notenum = 3;
-	} else if (!strcmp(note, "Do#") || !strcmp(note, "C#")
-		   || !strcmp(note, "Db")) {
-		notenum = 4;
-	} else if (!strcmp(note, "Re") || !strcmp(note, "D")) {
+	else if (STARTS(note, "Re") || STARTS(note, "D"))
 		notenum = 5;
-	} else if (!strcmp(note, "Re#") || !strcmp(note, "D#")
-		   || !strcmp(note, "Eb")) {
-		notenum = 6;
-	} else if (!strcmp(note, "Mi") || !strcmp(note, "E")) {
+	else if (STARTS(note, "Mi") || STARTS(note, "E"))
 		notenum = 7;
-	} else if (!strcmp(note, "Fa") || !strcmp(note, "F")) {
+	else if (STARTS(note, "Fa") || STARTS(note, "F"))
 		notenum = 8;
-	} else if (!strcmp(note, "Fa#") || !strcmp(note, "F#")
-		   || !strcmp(note, "Gb")) {
-		notenum = 9;
-	} else if (!strcmp(note, "Sol") || !strcmp(note, "G")) {
+	else if (STARTS(note, "Sol") || STARTS(note, "G"))
 		notenum = 10;
-	} else if (!strcmp(note, "Sol#") || !strcmp(note, "G#")
-		   || !strcmp(note, "Ab")) {
-		notenum = 11;
-	} else
+	else if (!STARTS(note, "La") && !STARTS(note, "A"))
 		return 0;
 
-	freq *= powf(2, octave);
-	freq *= powf(2, notenum / 12.0);
+	/* handle the semitone trailer, if any */
+	switch (note[strlen(note) - 1]) {
+	case '#':
+		notenum++;
+		break;
+	case 'b':
+		notenum--;
+		break;
+	}
+	/* Handle Lab/Ab */
+	if (notenum == -1)
+		notenum = 11;
+
+	freq *= powf(2, octave + notenum / 12.0);
 
 	return freq;
 }
