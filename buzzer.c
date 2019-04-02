@@ -101,9 +101,12 @@ static float note2freq(const char *note, int octave)
 	/* handle the semitone trailer, if any */
 	switch (note[strlen(note) - 1]) {
 	case '#':
+	case 'd': /* diesis */
+	case 's': /* sharp */
 		notenum++;
 		break;
-	case 'b':
+	case 'b': /* bemolle */
+	case 'f': /* flat */
 		notenum--;
 		break;
 	}
