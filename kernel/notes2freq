@@ -31,7 +31,7 @@ P			) freq=0;;
 esac
 
 i=$ottava
-if [ $ottava -gt 0 ]; then 
+if [ $ottava -gt 0 ]; then
 	while [ $i -gt 0  ]; do
 		freq=$((freq * 2))
 		i=$((i-1))
