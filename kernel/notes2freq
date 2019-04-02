@@ -2,17 +2,17 @@
 
 while read note time; do
 
-ottava=3
+octave=3
 
 case $note in
-*0|*1|*2|*3|*4|*5|*6|*7|*8|*9)	ottava=${note:(-1)}
+*0|*1|*2|*3|*4|*5|*6|*7|*8|*9)	octave=${note:(-1)}
 				note=${note:0:$((${#note}-1))}
 				;;
 esac
 
 note=${note/\#/d}
 
-ottava=$((ottava-3))
+octave=$((octave-3))
 
 case $note in
 La	|A		) freq=440;;
@@ -30,8 +30,8 @@ Sold	|Gd	|Ab	) freq=831;;
 P			) freq=0;;
 esac
 
-i=$ottava
-if [ $ottava -gt 0 ]; then
+i=$octave
+if [ $octave -gt 0 ]; then
 	while [ $i -gt 0  ]; do
 		freq=$((freq * 2))
 		i=$((i-1))
