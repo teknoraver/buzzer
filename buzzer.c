@@ -79,23 +79,22 @@ static float note2freq(const char *note, int octave)
 	int notenum = 0;
 	float freq = 440.0;
 
-	/* it just sounds good */
-	octave -= 3;
-
 	/* parse the note */
-	if (STARTS(note, "Si") || STARTS(note, "B"))
-		notenum = 2;
-	else if (STARTS(note, "Do") || STARTS(note, "C"))
-		notenum = 3;
+	if (STARTS(note, "Do") || STARTS(note, "C"))
+		notenum = -9;
 	else if (STARTS(note, "Re") || STARTS(note, "D"))
-		notenum = 5;
+		notenum = -7;
 	else if (STARTS(note, "Mi") || STARTS(note, "E"))
-		notenum = 7;
+		notenum = -5;
 	else if (STARTS(note, "Fa") || STARTS(note, "F"))
-		notenum = 8;
+		notenum = -4;
 	else if (STARTS(note, "Sol") || STARTS(note, "G"))
-		notenum = 10;
-	else if (!STARTS(note, "La") && !STARTS(note, "A"))
+		notenum = -2;
+	else if (STARTS(note, "La") || STARTS(note, "A"))
+		notenum = 0;
+	else if (STARTS(note, "Si") || STARTS(note, "B"))
+		notenum = 2;
+	else
 		return 0;
 
 	/* handle the semitone trailer, if any */
@@ -110,11 +109,8 @@ static float note2freq(const char *note, int octave)
 		notenum--;
 		break;
 	}
-	/* Handle Lab/Ab */
-	if (notenum == -1)
-		notenum = 11;
 
-	freq *= powf(2, octave + notenum / 12.0);
+	freq *= powf(2, (octave - 4) + notenum / 12.0);
 
 	return freq;
 }
