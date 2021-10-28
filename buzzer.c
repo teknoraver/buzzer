@@ -24,12 +24,12 @@ union freq {
 
 static int port = -1;
 
-static void play(float f, int dur)
+static void play(double f, int dur)
 {
 	uint8_t p61;
 
 	if (f && f > 19 && f < 20000) {
-		union freq freq = {.freq = PIT_TICK_RATE / f };
+		union freq freq = { .freq = PIT_TICK_RATE / f };
 
 		/* set buzzer
 		 * 0xB6
@@ -78,9 +78,9 @@ static void play(float f, int dur)
 
 #define STARTS(s1, s2) !strncmp(s1, s2, sizeof(s2) - 1)
 
-static float note2freq(const char *note, int octave)
+static double note2freq(const char *note, int octave)
 {
-	float freq = 440.0;
+	double freq = 440.0;
 	int notenum;
 
 	/* parse the note */
@@ -114,7 +114,7 @@ static float note2freq(const char *note, int octave)
 		break;
 	}
 
-	freq *= powf(2, (octave - 4) + notenum / 12.0);
+	freq *= pow(2, (octave - 4) + notenum / 12.0);
 
 	return freq;
 }
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 	while (getline(&line, &n, stdin) > 0) {
 		char *ptr = strchr(line, '\n');
 		int octave = 0;
-		float freq;
+		double freq;
 		int dur;
 
 		/* skip empty lines or comments */
