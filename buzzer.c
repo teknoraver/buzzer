@@ -27,6 +27,7 @@ static int port = -1;
 static void play(float f, int dur)
 {
 	uint8_t p61;
+
 	if (f && f > 19 && f < 20000) {
 		union freq freq = {.freq = PIT_TICK_RATE / f };
 
@@ -43,6 +44,7 @@ static void play(float f, int dur)
 		/* select desired HZ with two writes in counter 2, port 42h */
 		if (!pwrite(port, &freq.lob, 1, COUNTER2))
 			return;
+
 		if (!pwrite(port, &freq.hib, 1, COUNTER2))
 			return;
 
@@ -51,6 +53,7 @@ static void play(float f, int dur)
 		 */
 		if (!pread(port, &p61, 1, SPEAKER_PORT))
 			return;
+
 		if ((p61 & 3) != 3) {
 			p61 |= 3;
 			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
@@ -63,6 +66,7 @@ static void play(float f, int dur)
 		 */
 		if (!pread(port, &p61, 1, SPEAKER_PORT))
 			return;
+
 		if (p61 & 3) {
 			p61 &= 0xFC;
 			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
@@ -76,8 +80,8 @@ static void play(float f, int dur)
 
 static float note2freq(const char *note, int octave)
 {
-	int notenum = 0;
 	float freq = 440.0;
+	int notenum;
 
 	/* parse the note */
 	if (STARTS(note, "Do") || STARTS(note, "C"))
@@ -123,8 +127,8 @@ static void reset(void)
 
 int main(int argc, char *argv[])
 {
-	int verbose = 0;
 	char *line = NULL;
+	int verbose = 0;
 	size_t n = 0;
 	char c;
 
@@ -154,10 +158,10 @@ int main(int argc, char *argv[])
 	signal(SIGTERM, (__sighandler_t) reset);
 
 	while (getline(&line, &n, stdin) > 0) {
-		int octave = 0;
-		int dur;
-		float freq;
 		char *ptr = strchr(line, '\n');
+		int octave = 0;
+		float freq;
+		int dur;
 
 		/* skip empty lines or comments */
 		if (ptr == line || *line == '#')
