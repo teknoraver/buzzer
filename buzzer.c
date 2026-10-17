@@ -24,6 +24,23 @@ union freq {
 
 static int port = -1;
 
+/* only uses pread()/pwrite(), so it's safe to call from a signal handler */
+static void stop(void)
+{
+	uint8_t p61;
+
+	/* stop beep
+	 * clear bit 0-1 of port 61h
+	 */
+	if (pread(port, &p61, 1, SPEAKER_PORT) != 1)
+		return;
+
+	if (p61 & 3) {
+		p61 &= 0xFC;
+		pwrite(port, &p61, 1, SPEAKER_PORT);
+	}
+}
+
 static void play(double f, int dur)
 {
 	uint8_t p61;
@@ -38,40 +55,30 @@ static void play(double f, int dur)
 		 * 0 1 1        Mode 3: Square Wave
 		 * 0            Counter is a 16 bit binary counter (0..65535)
 		 */
-		if (!pwrite(port, "\xB6", 1, CONTROL_WORD_REG))
+		if (pwrite(port, "\xB6", 1, CONTROL_WORD_REG) != 1)
 			return;
 
 		/* select desired HZ with two writes in counter 2, port 42h */
-		if (!pwrite(port, &freq.lob, 1, COUNTER2))
+		if (pwrite(port, &freq.lob, 1, COUNTER2) != 1)
 			return;
 
-		if (!pwrite(port, &freq.hib, 1, COUNTER2))
+		if (pwrite(port, &freq.hib, 1, COUNTER2) != 1)
 			return;
 
 		/* start beep
 		 * set bit 0-1 (0: SPEAKER DATA; 1: OUT2) of GATE2 (port 61h)
 		 */
-		if (!pread(port, &p61, 1, SPEAKER_PORT))
+		if (pread(port, &p61, 1, SPEAKER_PORT) != 1)
 			return;
 
 		if ((p61 & 3) != 3) {
 			p61 |= 3;
-			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
+			if (pwrite(port, &p61, 1, SPEAKER_PORT) != 1)
 				return;
 		}
 
 	} else {
-		/* stop beep
-		 * clear bit 0-1 of port 61h
-		 */
-		if (!pread(port, &p61, 1, SPEAKER_PORT))
-			return;
-
-		if (p61 & 3) {
-			p61 &= 0xFC;
-			if (!pwrite(port, &p61, 1, SPEAKER_PORT))
-				return;
-		}
+		stop();
 	}
 	usleep(dur * 1000);
 }
@@ -119,10 +126,12 @@ static double note2freq(const char *note, int octave)
 	return freq;
 }
 
-static void reset(void)
+/* stop the buzzer, then die from the same signal so the exit status is right */
+static void on_signal(int sig)
 {
-	play(0, 0);
-	exit(0);
+	stop();
+	signal(sig, SIG_DFL);
+	raise(sig);
 }
 
 int main(int argc, char *argv[])
@@ -130,13 +139,7 @@ int main(int argc, char *argv[])
 	char *line = NULL;
 	int verbose = 0;
 	size_t n = 0;
-	char c;
-
-	port = open("/dev/port", O_RDWR);
-	if (port == -1) {
-		perror("open");
-		exit(1);
-	}
+	int c;
 
 	while ((c = getopt(argc, argv, "vh")) != -1)
 		switch (c) {
@@ -144,44 +147,64 @@ int main(int argc, char *argv[])
 			verbose = 1;
 			break;
 		case 'h':
-			fprintf(stderr, "usage: %s [-v] <notes_file\n", *argv);
-			/* fall through */
 		default:
-			return 0;
+			fprintf(stderr, "usage: %s [-v] <notes_file\n", *argv);
+			/* -h is a success, an unknown option is an error */
+			return c != 'h';
 		}
 
+	port = open("/dev/port", O_RDWR);
+	if (port == -1) {
+		perror("open");
+		exit(1);
+	}
+
 	/* stop the buzzer if exiting / crashing */
-	atexit(reset);
-	signal(SIGINT, (__sighandler_t) reset);
-	signal(SIGQUIT, (__sighandler_t) reset);
-	signal(SIGSEGV, (__sighandler_t) reset);
-	signal(SIGTERM, (__sighandler_t) reset);
+	atexit(stop);
+	signal(SIGINT, on_signal);
+	signal(SIGQUIT, on_signal);
+	signal(SIGSEGV, on_signal);
+	signal(SIGTERM, on_signal);
 
 	while (getline(&line, &n, stdin) > 0) {
-		char *ptr = strchr(line, '\n');
 		int octave = 0;
 		double freq;
+		char *ptr;
 		int dur;
 
+		/* truncate the string, the last line may lack the newline */
+		line[strcspn(line, "\n")] = 0;
+
 		/* skip empty lines or comments */
-		if (ptr == line || *line == '#')
+		if (!*line || *line == '#')
 			continue;
 
-		/* truncate the string */
-		*ptr = 0;
-
-		/* get the duration */
+		/* get the duration, there must be a note before it */
 		ptr = strchr(line, '\t');
+		if (!ptr || ptr == line) {
+			fprintf(stderr, "invalid line: '%s'\n", line);
+			continue;
+		}
 		dur = atoi(ptr + 1);
 		*ptr-- = 0;
 
 		/* if line starts with @ it's a frequency */
 		if (*line == '@') {
-			freq = atoi(line + 1);
+			char *end;
+
+			freq = strtod(line + 1, &end);
+			if (end == line + 1 || *end) {
+				fprintf(stderr, "invalid frequency: '%s'\n", line);
+				continue;
+			}
 		} else {
 			dur *= 100;
 			/* get the octave */
 			if (*line != 'P') {
+				if (*ptr < '0' || *ptr > '9') {
+					fprintf(stderr, "missing octave: '%s'\n", line);
+					continue;
+				}
 				octave = *ptr - '0';
 
 				/* strip the octave from the note */
@@ -189,6 +212,10 @@ int main(int argc, char *argv[])
 			}
 
 			freq = note2freq(line, octave);
+			if (!freq && *line != 'P') {
+				fprintf(stderr, "invalid note: '%s'\n", line);
+				continue;
+			}
 		}
 
 		if (verbose)
